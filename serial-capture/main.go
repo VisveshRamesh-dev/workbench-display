@@ -236,7 +236,7 @@ func main() {
 	if len(cfg.Stations) > 0 && cfg.Stations[0].ID != "" {
 		station = cfg.Stations[0].ID
 	}
-	url := fmt.Sprintf("http://localhost:%d/api/scan", cfg.ServerPort)
+	url := fmt.Sprintf("http://127.0.0.1:%d/api/scan", cfg.ServerPort)
 	client := &http.Client{Timeout: 3 * time.Second}
 
 	log.Printf("serial-capture starting.")
