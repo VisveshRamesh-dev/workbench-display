@@ -166,6 +166,10 @@ such as Eltima Virtual Serial Port Driver do the same.)
 `start.bat` launches `serial-capture.exe` if present (otherwise falls back to
 the keyboard `scanner-capture.exe`).
 
+**Full shared-serial setup** (com0com + hub4com "rename trick", so the plant
+software keeps reading COM1 unchanged): see **`COM-SHARING-SETUP.md`**.
+`start.bat` auto-launches the copier via `start-scanner-copier.bat` when present.
+
 ## Sharing the scanner with other software (scanner-capture)
 
 By default the display captures scans inside its own browser window, which only

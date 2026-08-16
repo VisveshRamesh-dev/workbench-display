@@ -4,7 +4,7 @@
   "completion_min_gap_ms": 3000,
   "completion_flash_ms": 1800,
   "server_port": 8080,
-  "serial_port": "COM1",
+  "serial_port": "COM11",
   "serial_mode": "baud=9600 parity=N data=8 stop=1",
   "serial_debug": true,
   "stations": [

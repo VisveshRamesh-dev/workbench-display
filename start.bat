@@ -28,6 +28,16 @@ if %CHROME%=="" (
     exit /b 1
 )
 
+REM ---- Start the scanner copier (hub4com), if the shared-scanner setup   ----
+REM ---- is in use. It mirrors the real scanner port to two virtual ports  ----
+REM ---- so the plant software and this display can share one scanner.     ----
+REM ---- See COM-SHARING-SETUP.md. Skipped automatically if not present.   ----
+if exist "start-scanner-copier.bat" (
+    echo Starting scanner copier...
+    start "scanner-copier" /MIN cmd /c "start-scanner-copier.bat"
+    timeout /t 2 /nobreak >nul
+)
+
 REM ---- Start the Go server ----
 echo Starting Workbench Display Controller server...
 start "workbench-server" /MIN cmd /c "workbench-display.exe"
