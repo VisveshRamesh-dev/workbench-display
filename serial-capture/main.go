@@ -42,6 +42,7 @@ type appCfg struct {
 	ServerPort  int          `json:"server_port"`
 	SerialPort  string       `json:"serial_port"`
 	SerialMode  string       `json:"serial_mode"`
+	SerialDebug bool         `json:"serial_debug"` // log raw bytes for troubleshooting
 	Stations    []stationCfg `json:"stations"`
 }
 
@@ -191,7 +192,7 @@ func openSerial(port, mode string) (uintptr, error) {
 	return h, nil
 }
 
-func readLoop(h uintptr, onScan func(string)) {
+func readLoop(h uintptr, debug bool, onScan func(string)) {
 	buf := make([]byte, 512)
 	var asm lineAssembler
 	lastData := time.Now()
@@ -206,6 +207,9 @@ func readLoop(h uintptr, onScan func(string)) {
 			continue
 		}
 		if n > 0 {
+			if debug {
+				log.Printf("raw %d bytes: % x", n, buf[:n])
+			}
 			for _, line := range asm.feed(buf[:n]) {
 				onScan(line)
 			}
@@ -235,27 +239,41 @@ func main() {
 	url := fmt.Sprintf("http://localhost:%d/api/scan", cfg.ServerPort)
 	client := &http.Client{Timeout: 3 * time.Second}
 
-	h, err := openSerial(cfg.SerialPort, cfg.SerialMode)
-	if err != nil {
-		log.Fatalf("serial: %v", err)
-	}
-	defer procCloseHandle.Call(h)
-
-	log.Printf("serial-capture running.")
-	log.Printf("  reading %s (%s)", cfg.SerialPort, cfg.SerialMode)
+	log.Printf("serial-capture starting.")
+	log.Printf("  port=%s  mode=%q  debug=%v", cfg.SerialPort, cfg.SerialMode, cfg.SerialDebug)
 	log.Printf("  forwarding scans to %s (station %s)", url, station)
 
-	readLoop(h, func(line string) {
+	// Retry opening the port instead of exiting, so the window stays open and
+	// shows WHY it failed (wrong COM number, or the port is held by another app
+	// because there is no splitter yet).
+	var h uintptr
+	for {
+		var openErr error
+		h, openErr = openSerial(cfg.SerialPort, cfg.SerialMode)
+		if openErr == nil {
+			break
+		}
+		log.Printf("cannot open %s: %v", cfg.SerialPort, openErr)
+		log.Printf("  -> check the COM port number in config.json, and that no other")
+		log.Printf("     program is holding the port (a splitter is needed to share it).")
+		time.Sleep(3 * time.Second)
+	}
+	defer procCloseHandle.Call(h)
+	log.Printf("port %s opened OK. Waiting for scans...", cfg.SerialPort)
+
+	readLoop(h, cfg.SerialDebug, func(line string) {
+		log.Printf("received: %q", line)
 		if !re.MatchString(line) {
-			return // not a part scan (noise / partial): ignore
+			log.Printf("  -> no part code found in this data; ignored")
+			return
 		}
 		body, _ := json.Marshal(map[string]string{"raw": line, "station_id": station})
 		resp, err := client.Post(url, "application/json", bytes.NewReader(body))
 		if err != nil {
-			log.Printf("forward failed: %v", err)
+			log.Printf("  -> forward FAILED: %v", err)
 			return
 		}
 		resp.Body.Close()
-		log.Printf("scan forwarded: %q", line)
+		log.Printf("  -> forwarded to display (station %s)", station)
 	})
 }
