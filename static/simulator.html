@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Scanner Simulator</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body class="page-sim">
+  <div class="sim-wrap">
+    <header class="sim-header">
+      <h1>Scanner Simulator</h1>
+      <p>Send mock scans to any workbench. Use this to test the display flow without physical scanners.</p>
+    </header>
+
+    <div class="sim-quick">
+      <span class="sim-label">Quick scans:</span>
+      <button data-code="SB390GKG">SB390GKG (FL)</button>
+      <button data-code="SB391GKG">SB391GKG (FR)</button>
+      <button data-code="SB392GKG">SB392GKG (RL)</button>
+      <button data-code="SB393GKG">SB393GKG (RR)</button>
+      <button data-code="SB999XXX" class="danger">Unknown</button>
+      <button data-code="random junk" class="danger">Garbage</button>
+    </div>
+
+    <div class="sim-grid" id="simGrid"></div>
+
+    <div class="sim-console">
+      <h3>Recent activity</h3>
+      <div id="log"></div>
+    </div>
+  </div>
+
+  <script>
+    let stations = [];
+    let selectedCode = 'SB390GKG';
+
+    async function init() {
+      const res = await fetch('/api/config');
+      const cfg = await res.json();
+      stations = cfg.stations;
+      renderStations();
+    }
+
+    function renderStations() {
+      const grid = document.getElementById('simGrid');
+      grid.innerHTML = '';
+      stations.forEach(st => {
+        const card = document.createElement('div');
+        card.className = 'sim-card';
+        card.innerHTML = `
+          <h3>${st.name}</h3>
+          <div class="sim-id">${st.id}</div>
+          <div class="sim-input-row">
+            <input type="text" data-station="${st.id}" placeholder="raw scan text (default: SB390GKG)" />
+            <button data-send="${st.id}">Send</button>
+          </div>
+          <div class="sim-actions">
+            <a href="/station/${st.id}" target="_blank" class="sim-link">Open display →</a>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+
+      grid.querySelectorAll('button[data-send]').forEach(btn => {
+        btn.addEventListener('click', () => sendScan(btn.dataset.send));
+      });
+      grid.querySelectorAll('input[data-station]').forEach(inp => {
+        inp.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') sendScan(inp.dataset.station);
+        });
+      });
+    }
+
+    document.querySelectorAll('.sim-quick button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        selectedCode = btn.dataset.code;
+        document.querySelectorAll('.sim-quick button').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        // populate empty inputs with the selected code
+        document.querySelectorAll('input[data-station]').forEach(inp => {
+          if (!inp.value) inp.placeholder = 'will send: ' + selectedCode;
+        });
+      });
+    });
+
+    async function sendScan(stationId) {
+      const input = document.querySelector(`input[data-station="${stationId}"]`);
+      const raw = (input.value || selectedCode).trim();
+      logEntry(`→ ${stationId}: "${raw}"`);
+
+      try {
+        const res = await fetch('/api/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ raw, station_id: stationId }),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          logEntry(`  ✓ ${stationId} → ${data.outcome} (${data.part_code})`, 'ok');
+        } else {
+          logEntry(`  ✗ ${stationId} → ${data.error}`, 'err');
+        }
+      } catch (err) {
+        logEntry(`  ✗ ${stationId} → network error`, 'err');
+      }
+      input.value = '';
+    }
+
+    function logEntry(msg, cls) {
+      const log = document.getElementById('log');
+      const line = document.createElement('div');
+      line.className = 'log-line ' + (cls || '');
+      const ts = new Date().toLocaleTimeString();
+      line.textContent = `[${ts}] ${msg}`;
+      log.prepend(line);
+      // keep last 30 lines
+      while (log.children.length > 30) log.removeChild(log.lastChild);
+    }
+
+    init();
+  </script>
+</body>
+</html>

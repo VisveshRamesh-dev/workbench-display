@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Workbench Display</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <section id="screen-idle" class="screen active">
+    <div class="idle-inner">
+      <div class="station-badge">STATION <span id="stationId">--</span></div>
+      <div class="idle-icon">
+        <svg width="180" height="180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="14" rx="1" />
+          <line x1="7" y1="7" x2="7" y2="15" />
+          <line x1="10" y1="7" x2="10" y2="15" />
+          <line x1="13" y1="7" x2="13" y2="15" />
+          <line x1="16" y1="7" x2="16" y2="15" />
+          <line x1="19" y1="7" x2="19" y2="15" />
+        </svg>
+      </div>
+      <h1>Scan Part to Begin</h1>
+      <p class="subtitle">Aim the scanner at the DataMatrix label on the part.</p>
+      <div class="pulse-dot"></div>
+    </div>
+  </section>
+
+  <section id="screen-display" class="screen">
+    <div class="display-header">
+      <span class="part-code" id="partCode">--</span>
+      <span class="part-desc" id="partDesc">--</span>
+      <span class="station-tag">Station <span id="stationTagId">--</span></span>
+    </div>
+    <div class="image-wrap">
+      <img id="specImage" src="" alt="Specification" />
+    </div>
+    <div class="footer-hint">This spec stays on screen until the next part is scanned</div>
+  </section>
+
+  <section id="screen-error" class="screen">
+    <div class="error-inner">
+      <div class="error-icon">!</div>
+      <h1>Unknown Part</h1>
+      <p class="error-detail" id="errorDetail">--</p>
+      <p class="error-hint">Verify the part or contact your line supervisor.</p>
+    </div>
+  </section>
+
+  <section id="screen-complete" class="screen">
+    <div class="complete-inner">
+      <div class="check-circle">
+        <svg width="140" height="140" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="5 12 10 17 19 8" />
+        </svg>
+      </div>
+      <h1>Complete</h1>
+      <p class="complete-detail" id="completeDetail">--</p>
+    </div>
+  </section>
+
+  <script>
+    // Extract station ID from URL path: /station/WB-01
+    const parts = window.location.pathname.split('/');
+    const stationId = parts[parts.length - 1];
+    document.getElementById('stationId').textContent = stationId;
+    document.getElementById('stationTagId').textContent = stationId;
+
+    let errorTimer = null;
+    let lastState = null; // last state event, so an error flash can restore it
+
+    function showScreen(name) {
+      document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+      document.getElementById('screen-' + name).classList.add('active');
+    }
+
+    function playErrorBeep() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        [0, 0.25, 0.5].forEach(delay => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.value = 880;
+          gain.gain.setValueAtTime(0.15, ctx.currentTime + delay);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.15);
+          osc.connect(gain).connect(ctx.destination);
+          osc.start(ctx.currentTime + delay);
+          osc.stop(ctx.currentTime + delay + 0.15);
+        });
+      } catch (e) { /* ignore */ }
+    }
+
+    function playCompleteChime() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const notes = [523, 659, 784]; // C-E-G major chord arpeggio
+        notes.forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = freq;
+          const t = ctx.currentTime + i * 0.12;
+          gain.gain.setValueAtTime(0.2, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+          osc.connect(gain).connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.25);
+        });
+      } catch (e) { /* ignore */ }
+    }
+
+    function renderState(ev) {
+      if (ev.state === 'idle') {
+        showScreen('idle');
+      } else if (ev.state === 'display') {
+        document.getElementById('partCode').textContent = ev.part_code || '';
+        document.getElementById('partDesc').textContent = ev.description || '';
+        if (ev.image) {
+          // cache-bust so a re-scan of the same code visibly refreshes the image
+          document.getElementById('specImage').src = '/' + ev.image + '?t=' + Date.now();
+        }
+        showScreen('display');
+      }
+    }
+
+    function handleEvent(ev) {
+      // Clear any lingering error auto-clear
+      if (errorTimer) { clearTimeout(errorTimer); errorTimer = null; }
+
+      if (ev.type === 'error') {
+        document.getElementById('errorDetail').textContent =
+          ev.part_code ? `Code "${ev.part_code}" is not configured.` : (ev.message || 'Scan could not be read.');
+        showScreen('error');
+        playErrorBeep();
+        // After the flash, return to the spec that was showing (the display
+        // persists until the next scan). If nothing has been scanned yet,
+        // fall back to the waiting screen.
+        errorTimer = setTimeout(() => {
+          if (lastState) renderState(lastState); else showScreen('idle');
+        }, 3000);
+        return;
+      }
+
+      if (ev.type === 'state') {
+        lastState = ev;
+        renderState(ev);
+      }
+    }
+
+    // ---- Bluetooth scanner capture ----
+    // The scanner pairs as an HID keyboard: it "types" the barcode very fast,
+    // then sends an Enter (some models send Tab). We buffer printable
+    // characters and flush the buffer to the server on that terminator.
+    // A gap between keystrokes longer than SCAN_RESET_MS starts a fresh
+    // buffer, so a stray earlier keypress can never prepend to a real scan.
+    // NOTE: this kiosk window MUST stay focused for scans to land here.
+    const SCAN_RESET_MS = 500;  // gap that starts a fresh buffer
+    const SCAN_FLUSH_MS = 200;  // silence after last key => scan done (no Enter needed)
+    let scanBuffer = '';
+    let lastKeyAt = 0;
+    let flushTimer = null;
+
+    async function sendScan(raw) {
+      try {
+        await fetch('/api/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ raw: raw, station_id: stationId }),
+        });
+        // The display update is delivered over SSE, so there is nothing
+        // to render from the response here.
+      } catch (err) {
+        console.warn('scan POST failed:', err);
+      }
+    }
+
+    function flushScan() {
+      if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
+      const raw = scanBuffer.trim();
+      scanBuffer = '';
+      if (raw) sendScan(raw);
+    }
+
+    document.addEventListener('keydown', (e) => {
+      const now = Date.now();
+      if (now - lastKeyAt > SCAN_RESET_MS) scanBuffer = '';
+      lastKeyAt = now;
+
+      // Some scanners send a terminating Enter/Tab — flush immediately.
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        flushScan();
+        return;
+      }
+      // Accumulate only single printable characters; ignore Shift, arrows,
+      // function keys, and anything held with a modifier.
+      if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        scanBuffer += e.key;
+        // Scanners that send NO terminator: flush after a brief pause.
+        if (flushTimer) clearTimeout(flushTimer);
+        flushTimer = setTimeout(flushScan, SCAN_FLUSH_MS);
+      }
+    });
+
+    function connect() {
+      const src = new EventSource('/events/' + encodeURIComponent(stationId));
+      src.onmessage = (e) => {
+        try {
+          const ev = JSON.parse(e.data);
+          handleEvent(ev);
+        } catch (err) {
+          console.warn('bad SSE payload:', err);
+        }
+      };
+      src.onerror = () => {
+        console.warn('SSE connection dropped, will retry');
+        // EventSource retries automatically
+      };
+    }
+
+    connect();
+  </script>
+</body>
+</html>

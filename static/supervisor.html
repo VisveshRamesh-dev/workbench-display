@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Line Supervisor View</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body class="page-super">
+  <div class="super-wrap">
+    <header class="super-header">
+      <h1>Door Garnish Line — Live Status</h1>
+      <div class="super-time" id="clock">--:--:--</div>
+    </header>
+    <div class="super-grid" id="stationsGrid"></div>
+  </div>
+
+  <script>
+    let stations = [];
+
+    async function init() {
+      const res = await fetch('/api/config');
+      const cfg = await res.json();
+      stations = cfg.stations;
+      renderCards();
+      tick();
+      setInterval(tick, 1000);
+      setInterval(refresh, 800);
+    }
+
+    function renderCards() {
+      const grid = document.getElementById('stationsGrid');
+      grid.innerHTML = '';
+      stations.forEach(st => {
+        const card = document.createElement('div');
+        card.className = 'super-card idle';
+        card.id = 'card-' + st.id;
+        card.innerHTML = `
+          <div class="super-card-header">
+            <span class="super-station-id">${st.id}</span>
+            <span class="super-state-badge" data-role="state">IDLE</span>
+          </div>
+          <h3>${st.name}</h3>
+          <div class="super-part" data-role="part">—</div>
+          <div class="super-desc" data-role="desc">Awaiting scan</div>
+          <div class="super-timer" data-role="timer">0s</div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    async function refresh() {
+      try {
+        const res = await fetch('/api/snapshots');
+        const snaps = await res.json();
+        snaps.forEach(snap => {
+          const card = document.getElementById('card-' + snap.id);
+          if (!card) return;
+          card.className = 'super-card ' + snap.state;
+          card.querySelector('[data-role=state]').textContent = snap.state.toUpperCase();
+          card.querySelector('[data-role=part]').textContent = snap.part_code || '—';
+          card.querySelector('[data-role=desc]').textContent =
+            snap.description || (snap.state === 'idle' ? 'Awaiting scan' : '');
+          card.querySelector('[data-role=timer]').textContent =
+            snap.state === 'idle' ? '' : (snap.seconds_in_state + 's');
+        });
+      } catch (e) { /* ignore transient errors */ }
+    }
+
+    function tick() {
+      const now = new Date();
+      const s = n => String(n).padStart(2, '0');
+      document.getElementById('clock').textContent =
+        `${s(now.getHours())}:${s(now.getMinutes())}:${s(now.getSeconds())}`;
+    }
+
+    init();
+  </script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+# Compiled binaries (rebuild with `go build`)
+*.exe
+
+# Chrome kiosk profiles (created at runtime by start.bat)
+chrome-profile-*/
+
+# Runtime scan logs (one CSV per day; recreated at runtime)
+/logs/
+
+# OS / editor cruft
+Thumbs.db
+.DS_Store
+*.swp

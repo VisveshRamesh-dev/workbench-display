@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Test Barcodes</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #fff; color: #111; margin: 24px; }
+    h1 { font-size: 22px; }
+    p.note { color: #555; max-width: 640px; }
+    .grid { display: flex; flex-wrap: wrap; gap: 24px; margin-top: 20px; }
+    .card { border: 1px solid #ccc; border-radius: 8px; padding: 16px; text-align: center; background: #fff; }
+    .card canvas { display: block; }
+    .code { font-family: monospace; font-size: 18px; margin-top: 8px; letter-spacing: 1px; }
+    .label { font-size: 12px; color: #666; margin-top: 2px; }
+    .valid .label { color: #187d3a; }
+    .err .label { color: #b3261e; }
+    @media print { .note, h1 { }
+      .card { break-inside: avoid; } }
+  </style>
+</head>
+<body>
+  <h1>Workbench Display — Test Barcodes (Code 128)</h1>
+  <p class="note">
+    Scan these with a phone barcode-scanner-keyboard app (or the real DS3678)
+    while the <b>/station/WB-01</b> kiosk window is focused. The four green
+    codes are valid parts; the two red codes exercise the error paths. You can
+    print this page or just scan it off the screen.
+  </p>
+  <div class="grid" id="grid"></div>
+
+  <script>
+    // ---- Minimal Code 128 (Code Set B) encoder -> canvas ----
+    // Patterns 0..106; each is bar/space widths, first element is a bar.
+    const PATTERNS = ["212222","222122","222221","121223","121322","131222","122213","122312","132212","221213","221312","231212","112232","122132","122231","113222","123122","123221","223211","221132","221231","213212","223112","312131","311222","321122","321221","312212","322112","322211","212123","212321","232121","111323","131123","131321","112313","132113","132311","211313","231113","231311","112133","112331","132131","113123","113321","133121","313121","211331","231131","213113","213311","213131","311123","311321","331121","312113","312311","332111","314111","221411","431111","111224","111422","121124","121421","141122","141221","112214","112412","122114","122411","142112","142211","241211","221114","413111","241112","134111","111242","121142","121241","114212","124112","124211","411212","421112","421211","212141","214121","412121","111143","111341","131141","114113","114311","411113","411311","113141","114131","311141","411131","211412","211214","211232","2331112"];
+    const START_B = 104, STOP = 106;
+
+    function encode128B(text) {
+      const values = [START_B];
+      let sum = START_B;
+      for (let i = 0; i < text.length; i++) {
+        const v = text.charCodeAt(i) - 32; // Code Set B: printable ASCII 32..126
+        values.push(v);
+        sum += v * (i + 1);
+      }
+      values.push(sum % 103); // checksum
+      values.push(STOP);
+      // Build module string (1 = bar, 0 = space)
+      let modules = "";
+      for (const val of values) {
+        const p = PATTERNS[val];
+        let bar = true;
+        for (const ch of p) {
+          const w = parseInt(ch, 10);
+          modules += (bar ? "1" : "0").repeat(w);
+          bar = !bar;
+        }
+      }
+      return modules; // stop pattern already includes the final bar
+    }
+
+    function drawBarcode(canvas, text, moduleW, height) {
+      const modules = encode128B(text);
+      const quiet = 10;
+      canvas.width = (modules.length + quiet * 2) * moduleW;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#000";
+      let x = quiet * moduleW;
+      for (const m of modules) {
+        if (m === "1") ctx.fillRect(x, 0, moduleW, height);
+        x += moduleW;
+      }
+    }
+
+    // Real H/KMC part-number field values (DI "P" + part number). The server
+    // extracts the leading 5-digit group (87310 etc.) to pick the spec image.
+    // Real part-number field values from the client's DS3678 scans. The server
+    // now keys on the FULL 13-char part number after "P", so the two 82301
+    // variants below show DIFFERENT pictures.
+    const codes = [
+      { code: "P82301GB030MWU", label: "82301-GB030MWU (FL)", cls: "valid" },
+      { code: "P82301GW000BJU", label: "82301-GW000BJU (same base, diff picture)", cls: "valid" },
+      { code: "P87310GB000ABP", label: "87310-GB000ABP", cls: "valid" },
+      { code: "P86600DY740ABP", label: "86600-DY740ABP", cls: "valid" },
+      { code: "P99999ZZ000ZZZ", label: "unknown part -> error flash", cls: "err" },
+      { code: "HELLO123",       label: "no part code -> error", cls: "err" },
+    ];
+
+    const grid = document.getElementById("grid");
+    for (const c of codes) {
+      const card = document.createElement("div");
+      card.className = "card " + c.cls;
+      const cv = document.createElement("canvas");
+      card.appendChild(cv);
+      const code = document.createElement("div");
+      code.className = "code";
+      code.textContent = c.code;
+      const lab = document.createElement("div");
+      lab.className = "label";
+      lab.textContent = c.label;
+      card.appendChild(code);
+      card.appendChild(lab);
+      grid.appendChild(card);
+      drawBarcode(cv, c.code, 3, 90);
+    }
+  </script>
+</body>
+</html>

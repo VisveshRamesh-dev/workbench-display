@@ -1,0 +1,309 @@
+/* ==========================================
+   Reset + base
+   ========================================== */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%;
+  min-height: 100%;
+  font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: #0f1620;
+  color: #e8eef5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ==========================================
+   Station display page (kiosk, full-screen)
+   ========================================== */
+body:not([class]) { overflow: hidden; user-select: none; cursor: none; }
+
+.screen {
+  position: fixed; inset: 0;
+  display: none;
+  align-items: center; justify-content: center;
+  flex-direction: column;
+}
+.screen.active { display: flex; }
+
+/* ---- idle ---- */
+#screen-idle {
+  background: radial-gradient(circle at center, #1a2842 0%, #0f1620 70%);
+}
+.idle-inner { text-align: center; color: #cfd8e3; }
+
+.station-badge {
+  display: inline-block;
+  padding: 8px 18px;
+  border: 1px solid #3a4c68;
+  border-radius: 999px;
+  color: #7ea0d6;
+  font-size: 14px; font-weight: 600;
+  letter-spacing: 3px;
+  margin-bottom: 40px;
+}
+.station-badge span { color: #fff; }
+
+.idle-icon { color: #4a6b9a; margin-bottom: 30px; opacity: 0.6; }
+
+#screen-idle h1 {
+  font-size: 56px; font-weight: 600; color: #fff;
+  margin-bottom: 16px; letter-spacing: -1px;
+}
+.subtitle { font-size: 22px; color: #8a9bb5; margin-bottom: 60px; }
+
+.pulse-dot {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #3fa9f5; margin: 0 auto;
+  animation: pulse 1.6s ease-in-out infinite;
+  box-shadow: 0 0 20px #3fa9f5;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.4; transform: scale(1.4); }
+}
+
+/* ---- display ---- */
+#screen-display { background: #fff; color: #0f1620; }
+
+.display-header {
+  position: absolute; top: 0; left: 0; right: 0;
+  padding: 16px 30px; background: #1f3a68; color: #fff;
+  display: flex; align-items: center; gap: 30px; z-index: 10;
+}
+.part-code {
+  font-size: 26px; font-weight: 700; letter-spacing: 1px;
+  background: rgba(255,255,255,0.15);
+  padding: 6px 16px; border-radius: 6px;
+}
+.part-desc { font-size: 20px; color: #cfd8e3; flex: 1; }
+.station-tag { font-size: 15px; color: #8fb0e0; letter-spacing: 2px; }
+
+.image-wrap {
+  width: 100%; height: 100%;
+  padding: 80px 40px 60px 40px;
+  display: flex; align-items: center; justify-content: center;
+  background: #f4f6fa;
+}
+#specImage {
+  max-width: 100%; max-height: 100%;
+  object-fit: contain;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+.footer-hint {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  padding: 12px; text-align: center;
+  background: #eef1f6; color: #5a6b85;
+  font-size: 16px; letter-spacing: 1px;
+}
+
+/* ---- error ---- */
+#screen-error {
+  background: radial-gradient(circle at center, #6d1a1a 0%, #3d0f0f 80%);
+  animation: errorFlash 0.6s ease-out;
+}
+@keyframes errorFlash {
+  0%   { background: #ff2020; }
+  100% { background: radial-gradient(circle at center, #6d1a1a 0%, #3d0f0f 80%); }
+}
+.error-inner { text-align: center; color: #fff; }
+.error-icon {
+  width: 140px; height: 140px; border-radius: 50%;
+  background: #ff3838; color: #fff;
+  font-size: 96px; font-weight: 900; line-height: 140px;
+  margin: 0 auto 40px auto;
+  box-shadow: 0 0 60px rgba(255, 56, 56, 0.6);
+}
+#screen-error h1 { font-size: 60px; font-weight: 700; margin-bottom: 20px; }
+.error-detail { font-size: 26px; color: #ffcccc; margin-bottom: 30px; font-family: 'Courier New', monospace; }
+.error-hint { font-size: 20px; color: #ffe6e6; opacity: 0.9; }
+
+/* ---- complete ---- */
+#screen-complete {
+  background: radial-gradient(circle at center, #1c6b3a 0%, #0e3b1f 80%);
+  animation: completeFlash 0.6s ease-out;
+}
+@keyframes completeFlash {
+  0%   { background: #2ea658; }
+  100% { background: radial-gradient(circle at center, #1c6b3a 0%, #0e3b1f 80%); }
+}
+.complete-inner { text-align: center; color: #fff; }
+.check-circle {
+  width: 200px; height: 200px; border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  color: #7ee39c; margin: 0 auto 30px auto;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 60px rgba(126, 227, 156, 0.35);
+  animation: checkPop 0.5s ease-out;
+}
+@keyframes checkPop {
+  0% { transform: scale(0.4); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+#screen-complete h1 { font-size: 66px; font-weight: 700; margin-bottom: 20px; letter-spacing: -1px; }
+.complete-detail { font-size: 24px; color: #cfe9d8; }
+
+/* ==========================================
+   Landing / index page
+   ========================================== */
+.page-index { overflow: auto; padding: 60px 40px; }
+.index-wrap { max-width: 1100px; margin: 0 auto; }
+.page-index h1 { font-size: 36px; margin-bottom: 6px; }
+.tagline { color: #8a9bb5; margin-bottom: 40px; font-size: 17px; }
+
+.index-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 18px;
+}
+.index-card {
+  display: block;
+  padding: 24px;
+  background: #1a2842;
+  border: 1px solid #2c4166;
+  border-radius: 10px;
+  color: inherit; text-decoration: none;
+  transition: transform 0.1s ease, border-color 0.15s ease;
+}
+.index-card:hover {
+  border-color: #4a76b8; transform: translateY(-2px);
+}
+.index-card h2 { font-size: 20px; color: #fff; margin-bottom: 8px; }
+.index-card p { color: #8a9bb5; font-size: 14px; line-height: 1.5; }
+
+/* ==========================================
+   Simulator page
+   ========================================== */
+.page-sim { overflow: auto; padding: 40px 30px; }
+.sim-wrap { max-width: 1200px; margin: 0 auto; }
+
+.sim-header h1 { font-size: 30px; margin-bottom: 8px; }
+.sim-header p { color: #8a9bb5; margin-bottom: 24px; font-size: 15px; }
+
+.sim-quick {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  padding: 16px 18px; background: #1a2842;
+  border: 1px solid #2c4166; border-radius: 10px;
+  margin-bottom: 24px;
+}
+.sim-label { color: #8a9bb5; font-size: 14px; margin-right: 6px; }
+.sim-quick button {
+  padding: 8px 14px; border: 1px solid #3a4c68;
+  background: #223256; color: #e8eef5;
+  border-radius: 6px; font-family: 'Courier New', monospace;
+  font-size: 13px; cursor: pointer;
+  transition: all 0.15s;
+}
+.sim-quick button:hover { background: #2c4166; border-color: #4a76b8; }
+.sim-quick button.selected { background: #1f6bcc; border-color: #4a95e5; color: #fff; }
+.sim-quick button.danger { border-color: #6d3a3a; color: #ffb0b0; }
+.sim-quick button.danger:hover { background: #4d2020; }
+
+.sim-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 30px;
+}
+.sim-card {
+  padding: 22px;
+  background: #1a2842;
+  border: 1px solid #2c4166;
+  border-radius: 10px;
+}
+.sim-card h3 { font-size: 18px; color: #fff; margin-bottom: 2px; }
+.sim-id { color: #7ea0d6; font-size: 12px; letter-spacing: 2px; margin-bottom: 16px; }
+.sim-input-row { display: flex; gap: 8px; margin-bottom: 12px; }
+.sim-input-row input {
+  flex: 1; padding: 8px 12px;
+  background: #0f1620; border: 1px solid #3a4c68;
+  color: #e8eef5; border-radius: 6px; font-size: 13px;
+  font-family: 'Courier New', monospace;
+}
+.sim-input-row input:focus { outline: none; border-color: #4a76b8; }
+.sim-input-row button {
+  padding: 8px 18px; background: #1f6bcc;
+  color: #fff; border: none; border-radius: 6px;
+  font-weight: 600; cursor: pointer;
+}
+.sim-input-row button:hover { background: #2a7ee5; }
+.sim-actions { display: flex; justify-content: flex-end; }
+.sim-link {
+  color: #7ea0d6; font-size: 13px; text-decoration: none;
+}
+.sim-link:hover { color: #a0c0f0; }
+
+.sim-console {
+  padding: 20px;
+  background: #0a0f18;
+  border: 1px solid #2c4166;
+  border-radius: 10px;
+}
+.sim-console h3 { font-size: 15px; color: #8a9bb5; margin-bottom: 12px; letter-spacing: 1px; text-transform: uppercase; }
+#log {
+  font-family: 'Courier New', monospace;
+  font-size: 13px; line-height: 1.7;
+  max-height: 260px; overflow-y: auto;
+}
+.log-line { color: #8a9bb5; }
+.log-line.ok { color: #7ee39c; }
+.log-line.err { color: #ff9090; }
+
+/* ==========================================
+   Supervisor page
+   ========================================== */
+.page-super { overflow: auto; padding: 30px; }
+.super-wrap { max-width: 1400px; margin: 0 auto; }
+.super-header {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 30px;
+}
+.super-header h1 { font-size: 26px; }
+.super-time {
+  font-family: 'Courier New', monospace;
+  font-size: 32px; color: #7ea0d6;
+  letter-spacing: 2px;
+}
+
+.super-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+.super-card {
+  padding: 24px;
+  background: #1a2842;
+  border: 2px solid #2c4166;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+.super-card.display { border-color: #1f6bcc; background: #1a2f52; }
+.super-card.complete { border-color: #2ea658; background: #1a3a26; animation: superFlash 0.5s ease-out; }
+@keyframes superFlash { 0% { background: #2ea658; } 100% { background: #1a3a26; } }
+
+.super-card-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 12px;
+}
+.super-station-id {
+  font-size: 12px; color: #7ea0d6; letter-spacing: 2px;
+}
+.super-state-badge {
+  font-size: 11px; padding: 3px 10px; border-radius: 999px;
+  background: rgba(126, 160, 214, 0.2); color: #7ea0d6;
+  letter-spacing: 1.5px; font-weight: 700;
+}
+.super-card.display .super-state-badge { background: rgba(31, 107, 204, 0.4); color: #a0c8f5; }
+.super-card.complete .super-state-badge { background: rgba(46, 166, 88, 0.4); color: #a0e5be; }
+
+.super-card h3 { font-size: 18px; color: #fff; margin-bottom: 16px; font-weight: 500; }
+.super-part {
+  font-family: 'Courier New', monospace;
+  font-size: 28px; font-weight: 700; color: #fff;
+  margin-bottom: 8px; letter-spacing: 1px;
+}
+.super-desc { color: #8a9bb5; font-size: 14px; margin-bottom: 20px; min-height: 20px; }
+.super-timer {
+  color: #7ea0d6; font-size: 13px; font-family: 'Courier New', monospace;
+  min-height: 18px;
+}

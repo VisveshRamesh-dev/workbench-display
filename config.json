@@ -1,0 +1,21 @@
+{
+  "code_pattern": "P([0-9A-Z]{13})",
+  "idle_timeout_seconds": 0,
+  "completion_min_gap_ms": 3000,
+  "completion_flash_ms": 1800,
+  "server_port": 8080,
+  "serial_port": "COM3",
+  "serial_mode": "baud=9600 parity=N data=8 stop=1",
+  "stations": [
+    { "id": "WB-01", "name": "Assembly Station" }
+  ],
+  "parts": {
+    "82301GB030MWU": { "image": "assets/SB393GKG.png", "description": "82301-GB030MWU (FL)" },
+    "82301GW000BJU": { "image": "assets/SB390GKG.png", "description": "82301-GW000BJU" },
+    "87310GB000ABP": { "image": "assets/SB391GKG.png", "description": "87310-GB000ABP" },
+    "86600DY740ABP": { "image": "assets/SB392GKG.png", "description": "86600-DY740ABP" },
+    "87410BM000ABP": { "image": "assets/SB390GKG.png", "description": "87410-BM000ABP (demo sample)" },
+    "87510BM000ABP": { "image": "assets/SB391GKG.png", "description": "87510-BM000ABP (demo sample)" },
+    "87610BM000ABP": { "image": "assets/SB392GKG.png", "description": "87610-BM000ABP (demo sample)" }
+  }
+}
